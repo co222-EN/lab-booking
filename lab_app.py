@@ -10,15 +10,22 @@ EXCEL_FILE = "lab_data.xlsx"
 # 加载数据函数
 def load_data():
     if os.path.exists(EXCEL_FILE):
-        df = pd.read_excel(EXCEL_FILE)
-        # 【关键改动】强行把这两列转成时间格式，如果遇到乱码就跳过
-        df['开始时间'] = pd.to_datetime(df['开始时间'], errors='coerce')
-        df['结束时间'] = pd.to_datetime(df['结束时间'], errors='coerce')
-        # 删掉那些转换失败的空行（防止干扰）
-        df = df.dropna(subset=['开始时间', '结束时间'])
-        return df
+        try:
+            # 读取 Excel
+            df = pd.read_excel(EXCEL_FILE)
+            
+            # 【核心修复】强行转换格式，errors='coerce' 会把乱码变成空值，防止程序崩溃
+            df['开始时间'] = pd.to_datetime(df['开始时间'], errors='coerce')
+            df['结束时间'] = pd.to_datetime(df['结束时间'], errors='coerce')
+            
+            # 剔除掉那些时间转换失败的行
+            df = df.dropna(subset=['开始时间', '结束时间'])
+            return df
+        except Exception as e:
+            st.error(f"读取文件出错: {e}")
+            return pd.DataFrame(columns=["预约人", "预约事由", "开始时间", "结束时间", "备注"])
     return pd.DataFrame(columns=["预约人", "预约事由", "开始时间", "结束时间", "备注"])
-
+    
 df = load_data()
 
 # --- 2. 顶部标题 ---
