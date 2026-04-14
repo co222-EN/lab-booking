@@ -11,8 +11,11 @@ EXCEL_FILE = "lab_data.xlsx"
 def load_data():
     if os.path.exists(EXCEL_FILE):
         df = pd.read_excel(EXCEL_FILE)
-        df['开始时间'] = pd.to_datetime(df['开始时间'])
-        df['结束时间'] = pd.to_datetime(df['结束时间'])
+        # 【关键改动】强行把这两列转成时间格式，如果遇到乱码就跳过
+        df['开始时间'] = pd.to_datetime(df['开始时间'], errors='coerce')
+        df['结束时间'] = pd.to_datetime(df['结束时间'], errors='coerce')
+        # 删掉那些转换失败的空行（防止干扰）
+        df = df.dropna(subset=['开始时间', '结束时间'])
         return df
     return pd.DataFrame(columns=["预约人", "预约事由", "开始时间", "结束时间", "备注"])
 
