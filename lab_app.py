@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from pymongo import MongoClient
+import time 
 
 # --- 1. 数据库配置 ---
 st.set_page_config(page_title="机器人实验室预约系统", page_icon="🤖", layout="wide")
@@ -99,6 +100,7 @@ with col_right:
                 collection.insert_one(new_doc)
                 st.success("🎉 预约成功！数据已实时同步到云端数据库。")
                 st.balloons()
+                time.sleep(2)
                 st.rerun()
 
 # --- 4. 管理员后台 ---
