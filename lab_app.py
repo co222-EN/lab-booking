@@ -117,16 +117,34 @@ with st.expander("🔐 管理员后台"):
             st.rerun()
         
         st.markdown("---")
-        st.markdown("### 📊 预约记录管理 (可删除)")
+        st.markdown("### 📊 预约记录管理")
+
+        # 【新增】筛选功能布局
+        col_m1, col_m2 = st.columns([1, 2])
+        filter_mode = col_m1.radio("列表显示模式", ["查看全部", "按日期筛选"])
         
-        # 从数据库获取最近的全部条数据
-        all_data = list(collection.find().sort("开始时间", -1))
+        query = {} # 默认查询全部
+        
+        if filter_mode == "按日期筛选":
+            target_date = col_m2.date_input("选择要查看的日期", datetime.now())
+            # 构建当天的起止时间
+            start_of_day = datetime.combine(target_date, datetime.min.time())
+            end_of_day = datetime.combine(target_date, datetime.max.time())
+            # 设置查询条件：开始时间在当天范围内
+            query = {"开始时间": {"$gte": start_of_day, "$lte": end_of_day}}
+            st.info(f"📅 正在查看 {target_date} 的所有预约")
+        else:
+            st.info("📜 正在查看数据库中的全部预约记录")
+
+        # 根据 query 条件获取数据
+        all_data = list(collection.find(query).sort("开始时间", -1))
         
         if all_data:
             for res in all_data:
                 with st.container():
                     col_info, col_btn = st.columns([3, 1])
                     
+                    # 格式化时间显示
                     time_display = res['开始时间'].strftime('%Y-%m-%d %H:%M')
                     col_info.write(f"👤 **{res['预约人']}** | 🕒 {time_display}")
                     col_info.write(f"📝 事由：{res['预约事由']}")
@@ -139,4 +157,4 @@ with st.expander("🔐 管理员后台"):
                     
                     st.divider() 
         else:
-            st.info("💡 数据库中目前没有预约记录。")
+            st.warning("🔎 该条件下没有找到任何预约记录。")
