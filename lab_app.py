@@ -38,7 +38,7 @@ def save_config(start_date, end_date):
     )
 
 # --- 2. 顶部标题 ---
-st.title("🤖 百度机器人实验室预约系统 (云端增强版)")
+st.title("🤖 百度机器人实验室预约系统 ")
 st.markdown("---")
 
 # --- 3. 核心 UI 布局 ---
