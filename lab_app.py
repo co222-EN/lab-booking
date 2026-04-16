@@ -38,7 +38,7 @@ def save_config(start_date, end_date):
     )
 
 # --- 2. 顶部标题 ---
-st.title("🤖 百度机器人实验室预约系统 ")
+st.title("🤖 百度机器人实验室预约系统 (云端增强版)")
 st.markdown("---")
 
 # --- 3. 核心 UI 布局 ---
@@ -115,34 +115,8 @@ with st.expander("🔐 管理员后台"):
             st.success("权限已更新！")
             st.rerun()
         
-       st.markdown("---")
-        st.markdown("### 📊 预约记录管理 (可删除)")
-        
-        # 1. 从数据库获取最近的 100 条数据
+        st.markdown("---")
+        st.markdown("### 📊 近期预约明细")
         all_data = list(collection.find().sort("开始时间", -1).limit(100))
-        
         if all_data:
-            # 遍历每一条数据，画出带按钮的行
-            for res in all_data:
-                # 创建一个容器，让每一行看起来更整齐
-                with st.container():
-                    # 分成 3 列：信息列、占位列、操作列
-                    col_info, col_btn = st.columns([3, 1])
-                    
-                    # 格式化时间，方便阅读
-                    time_display = res['开始时间'].strftime('%Y-%m-%d %H:%M')
-                    
-                    # 左边显示基本信息
-                    col_info.write(f"👤 **{res['预约人']}** | 🕒 {time_display}")
-                    col_info.write(f"📝 事由：{res['预约事由']}")
-                    
-                    # 右边放删除按钮（注意：每个按钮必须有唯一的 key，所以用数据库的 _id）
-                    if col_btn.button("🗑️ 删除", key=str(res["_id"])):
-                        # 执行数据库删除操作
-                        collection.delete_one({"_id": res["_id"]})
-                        st.success(f"已成功删除 {res['预约人']} 的记录！")
-                        st.rerun() # 立即刷新网页
-                    
-                    st.divider() # 画一条分割线
-        else:
-            st.info("💡 数据库中目前没有预约记录。")
+            st.write(pd.DataFrame(all_data).drop(columns=['_id']))
