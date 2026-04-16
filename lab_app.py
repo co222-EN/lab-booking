@@ -38,7 +38,7 @@ def save_config(start_date, end_date):
     )
 
 # --- 2. 顶部标题 ---
-st.title("🤖 百度机器人实验室预约系统 (云端增强版)")
+st.title("🤖 百度机器人实验室预约系统 ")
 st.markdown("---")
 
 # --- 3. 核心 UI 布局 ---
@@ -105,6 +105,7 @@ with col_right:
 st.markdown("---")
 with st.expander("🔐 管理员后台"):
     admin_pwd = st.text_input("管理密码", type="password")
+    
     if admin_pwd == "123456":
         st.markdown("### ⚙️ 预约权限设置")
         c_start, c_end = st.columns(2)
@@ -116,7 +117,26 @@ with st.expander("🔐 管理员后台"):
             st.rerun()
         
         st.markdown("---")
-        st.markdown("### 📊 近期预约明细")
-        all_data = list(collection.find().sort("开始时间", -1).limit(100))
+        st.markdown("### 📊 预约记录管理 (可删除)")
+        
+        # 从数据库获取最近的全部条数据
+        all_data = list(collection.find().sort("开始时间", -1))
+        
         if all_data:
-            st.write(pd.DataFrame(all_data).drop(columns=['_id']))
+            for res in all_data:
+                with st.container():
+                    col_info, col_btn = st.columns([3, 1])
+                    
+                    time_display = res['开始时间'].strftime('%Y-%m-%d %H:%M')
+                    col_info.write(f"👤 **{res['预约人']}** | 🕒 {time_display}")
+                    col_info.write(f"📝 事由：{res['预约事由']}")
+                    
+                    # 删除按钮
+                    if col_btn.button("🗑️ 删除", key=str(res["_id"])):
+                        collection.delete_one({"_id": res["_id"]})
+                        st.success(f"已成功删除 {res['预约人']} 的记录！")
+                        st.rerun() 
+                    
+                    st.divider() 
+        else:
+            st.info("💡 数据库中目前没有预约记录。")
