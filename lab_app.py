@@ -138,6 +138,9 @@ with st.expander("🔐 管理员后台"):
         all_data = list(collection.find(query).sort("开始时间", -1))
         
         if all_data:
+            # 【新增】一键全选开关（放在表单外，点击立即生效）
+            select_all = st.checkbox("✅ 一键全选当前列表下的所有记录")
+            
             with st.form("batch_delete_form"):
                 selected_ids = [] 
                 
@@ -149,7 +152,8 @@ with st.expander("🔐 管理员后台"):
                         col_info.write(f"👤 **{res['预约人']}** | 🕒 {time_display}")
                         col_info.write(f"📝 事由：{res['预约事由']}")
                         
-                        is_checked = col_chk.checkbox("🗑️ 勾选", key=str(res["_id"]))
+                        # 【核心魔法】这里的 value 参数绑定了外面的 select_all 状态
+                        is_checked = col_chk.checkbox("🗑️ 勾选", value=select_all, key=str(res["_id"]))
                         if is_checked:
                             selected_ids.append(res["_id"])
                         
