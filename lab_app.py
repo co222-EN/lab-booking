@@ -119,44 +119,54 @@ with st.expander("🔐 管理员后台"):
             st.rerun()
         
         st.markdown("---")
-        st.markdown("### 📊 预约记录管理")
+        st.markdown("### 📊 预约记录管理 (支持批量删除)")
 
-        # 【新增】筛选功能布局
+        # 筛选功能保持不变
         col_m1, col_m2 = st.columns([1, 2])
         filter_mode = col_m1.radio("列表显示模式", ["查看全部", "按日期筛选"])
         
-        query = {} # 默认查询全部
+        query = {} 
         
         if filter_mode == "按日期筛选":
             target_date = col_m2.date_input("选择要查看的日期", datetime.now())
-            # 构建当天的起止时间
             start_of_day = datetime.combine(target_date, datetime.min.time())
             end_of_day = datetime.combine(target_date, datetime.max.time())
-            # 设置查询条件：开始时间在当天范围内
             query = {"开始时间": {"$gte": start_of_day, "$lte": end_of_day}}
             st.info(f"📅 正在查看 {target_date} 的所有预约")
         else:
             st.info("📜 正在查看数据库中的全部预约记录")
 
-        # 根据 query 条件获取数据
         all_data = list(collection.find(query).sort("开始时间", -1))
         
         if all_data:
-            for res in all_data:
-                with st.container():
-                    col_info, col_btn = st.columns([3, 1])
-                    
-                    # 格式化时间显示
-                    time_display = res['开始时间'].strftime('%Y-%m-%d %H:%M')
-                    col_info.write(f"👤 **{res['预约人']}** | 🕒 {time_display}")
-                    col_info.write(f"📝 事由：{res['预约事由']}")
-                    
-                    # 删除按钮
-                    if col_btn.button("🗑️ 删除", key=str(res["_id"])):
-                        collection.delete_one({"_id": res["_id"]})
-                        st.success(f"已成功删除 {res['预约人']} 的记录！")
-                        st.rerun() 
-                    
-                    st.divider() 
+            # 【新增】使用 st.form 包裹批量勾选逻辑
+            with st.form("batch_delete_form"):
+                selected_ids = [] # 用于存放被勾选的记录 ID
+                
+                for res in all_data:
+                    with st.container():
+                        col_info, col_chk = st.columns([3, 1])
+                        
+                        time_display = res['开始时间'].strftime('%Y-%m-%d %H:%M')
+                        col_info.write(f"👤 **{res['预约人']}** | 🕒 {time_display}")
+                        col_info.write(f"📝 事由：{res['预约事由']}")
+                        
+                        # 把原来的 button 换成了 checkbox
+                        is_checked = col_chk.checkbox("🗑️ 勾选", key=str(res["_id"]))
+                        if is_checked:
+                            selected_ids.append(res["_id"])
+                        
+                        st.divider() 
+                
+                # 统一的批量删除按钮放在表单最底部
+                if st.form_submit_button("🚨 确认删除所选记录"):
+                    if selected_ids:
+                        # MongoDB 的高效批量删除语法：$in
+                        collection.delete_many({"_id": {"$in": selected_ids}})
+                        st.success(f"🎉 成功删除了 {len(selected_ids)} 条记录！")
+                        time.sleep(1.5) # 稍微停顿一下让你看到成功提示
+                        st.rerun()
+                    else:
+                        st.warning("⚠️ 请先勾选需要删除的记录！")
         else:
-            st.warning("🔎 该条件下没有找到任何预约记录。")
+            st.warning("🔎 该条件下没有找到任何预约记录。")约记录。")
