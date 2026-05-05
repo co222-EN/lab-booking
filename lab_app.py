@@ -12,8 +12,8 @@ try:
     MONGO_URI = st.secrets["mongo"]["uri"]
     client = MongoClient(MONGO_URI, tlsAllowInvalidCertificates=True, serverSelectionTimeoutMS=5000)
     db = client["lab_db"]          # 数据库名字
-    collection = db["bookings"]     # 集合（类似Excel的Sheet）
-    config_col = db["config"]       # 存放老师权限的集合
+    collection = db["bookings"]     # 集合
+    config_col = db["config"]       # 存放权限的集合
 except Exception as e:
     st.error(f"数据库连接配置失败: {e}")
     st.stop()
@@ -35,7 +35,7 @@ def save_config(start_date, end_date):
             "start": start_date.strftime("%Y-%m-%d"),
             "end": end_date.strftime("%Y-%m-%d")
         }},
-        upsert=True # 如果不存在就新建
+        upsert=True
     )
 
 # --- 2. 顶部标题 ---
@@ -49,7 +49,6 @@ with col_left:
     st.subheader("🗓️ 课表查询")
     check_date = st.date_input("查看哪天的占用情况？", datetime.now())
     
-    # 数据库查询：找开始时间在那一天的记录
     start_of_day = datetime.combine(check_date, datetime.min.time())
     end_of_day = datetime.combine(check_date, datetime.max.time())
     
@@ -89,7 +88,6 @@ with col_right:
             elif u_start >= u_end:
                 st.error("❌ 结束时间错误！")
             else:
-                # 直接插入数据库
                 new_doc = {
                     "预约人": u_name,
                     "预约事由": u_reason,
@@ -125,7 +123,6 @@ with st.expander("🔐 管理员后台"):
         filter_mode = col_m1.radio("列表显示模式", ["查看全部", "按日期筛选"])
         
         query = {} 
-        
         if filter_mode == "按日期筛选":
             target_date = col_m2.date_input("选择要查看的日期", datetime.now())
             start_of_day = datetime.combine(target_date, datetime.min.time())
@@ -138,8 +135,18 @@ with st.expander("🔐 管理员后台"):
         all_data = list(collection.find(query).sort("开始时间", -1))
         
         if all_data:
-            # 【新增】一键全选开关（放在表单外，点击立即生效）
-            select_all = st.checkbox("✅ 一键全选当前列表下的所有记录")
+            # --- 【核心修复：强力全选逻辑】 ---
+            # 定义回调函数：当“全选”按钮状态改变时，强制更新所有子勾选框
+            def toggle_all():
+                new_state = st.session_state.master_select  # 获取全选按钮当前的值
+                for item in all_data:
+                    # 通过 key 强制修改 session_state 里的每一个勾选框
+                    st.session_state[f"chk_{item['_id']}"] = new_state
+
+            # 全选按钮：增加 on_change 回调
+            st.checkbox("✅ 一键全选当前列表下的所有记录", 
+                        key="master_select", 
+                        on_change=toggle_all)
             
             with st.form("batch_delete_form"):
                 selected_ids = [] 
@@ -152,8 +159,8 @@ with st.expander("🔐 管理员后台"):
                         col_info.write(f"👤 **{res['预约人']}** | 🕒 {time_display}")
                         col_info.write(f"📝 事由：{res['预约事由']}")
                         
-                        # 【核心魔法】这里的 value 参数绑定了外面的 select_all 状态
-                        is_checked = col_chk.checkbox("🗑️ 勾选", value=select_all, key=str(res["_id"]))
+                        # 子勾选框：key 必须与上面回调函数中的 key 规则一致
+                        is_checked = col_chk.checkbox("🗑️ 勾选", key=f"chk_{res['_id']}")
                         if is_checked:
                             selected_ids.append(res["_id"])
                         
@@ -163,6 +170,8 @@ with st.expander("🔐 管理员后台"):
                     if selected_ids:
                         collection.delete_many({"_id": {"$in": selected_ids}})
                         st.success(f"🎉 成功删除了 {len(selected_ids)} 条记录！")
+                        # 删除后清空全选状态
+                        st.session_state.master_select = False
                         time.sleep(1.5) 
                         st.rerun()
                     else:
